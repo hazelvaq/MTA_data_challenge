@@ -1,0 +1,34 @@
+```
+title
+```
+
+# Load in data sets
+
+```{r}
+# libraries
+library(tidyverse)
+library(janitor)
+library(dplyr)
+
+bus_speeds <- read.csv("data/MTA_Bus_Speeds__2015-2019_20241008.csv")
+
+customer_complaints <- 
+    read.csv("data/MTA_Bus_Customer_Journey-Focused_Metrics__2017-2019_20241008.csv")
+
+```
+
+
+# Initial data review
+```{r}
+# Find the most additional travel time by borough 
+travel_borough <- customer_complaints %>% 
+  group_by(borough) %>% 
+  summarize(travel_time_sum = mean(additional_travel_time, na.rm = TRUE))
+
+# most by borough and line
+travel_line <- customer_complaints %>% 
+  group_by(borough, period) %>% 
+  summarize(travel_time_sum = mean(additional_travel_time))
+
+```
+
