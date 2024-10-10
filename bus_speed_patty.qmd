@@ -1,0 +1,51 @@
+---
+title: "Bus Speed"
+format: html
+---
+
+Overall questions:
+- Big picture: How much time does an average rider waste waiting? - Pie chart (interactive)
+- From the people that wait the most – what borough are they waiting in 
+- Tie it to speed and bus mileage — is there a bus going slower than average that is causing the delays 
+
+
+
+```{r}
+#load in libraries
+library(tidyverse)
+library(dplyr)
+library(ggplot2)
+```
+
+```{r}
+#load in data
+bus_speed <- read_csv("data/MTA_Bus_Speeds__2015-2019_20241008.csv")
+
+#view data
+View(bus_speed)
+```
+
+
+```{r}
+#find average speed per borough (overall speed)
+bus_avg <- bus_speed %>% 
+  group_by(borough) %>% 
+  summarise(mean_speed = mean(average_speed))
+
+View(bus_avg)
+```
+
+```{r}
+#create a bar chart showing the average speeds in each borough
+ggplot(data = bus_avg, 
+       aes(x = borough, 
+           y = mean_speed)) + 
+  geom_col(fill = c("red", "orange", "yellow", "green", "blue", "purple")) +
+  labs(title = "Average bus speeds in each borough from 2014 to 2019",
+       x = "Borough",
+       y = "Speed (mph)") +
+  theme_minimal()
+```
+
+
+
