@@ -1,0 +1,76 @@
+### MTA Data Challenge
+
+Objectives:
+
+1.  Start by borough and compare the bus speeds in each borough, then break it down to total miles traveled and average bus speed 
+
+```{r, warning=FALSE, message=FALSE}
+library(tidyverse)
+# reading in data 
+
+bus_speed <- read_csv('data/mta_bus_speeds_2020.csv')
+
+waiting_data <- read_csv('data/MTA_Bus_Customer_Journey-Focused_Metrics__2017-2019_20241008.csv')
+
+# grouping by five boroughs: Bronx, Brooklyn, Manhattan, Queens, Staten
+bronx <- bus_speed %>% 
+  filter(borough == 'Bronx')
+
+brooklyn <- bus_speed %>% 
+  filter(borough == 'Brooklyn')
+
+manhattan <- bus_speed %>% 
+  filter(borough == 'Manhattan')
+
+queens <- bus_speed %>% 
+  filter(borough == 'Queens')
+
+staten <- bus_speed %>% 
+  filter(borough  == 'Staten Island')
+```
+
+```{r, warning = FALSE, message=FALSE}
+exp <- bus_speed %>% 
+  group_by(borough, trip_type,period,route_id) %>% 
+  filter(trip_type == 'EXP'|trip_type == 'LCL/LTD') %>% 
+  summarize(count = n())
+
+length(unique(exp$route_id))
+
+exp %>% 
+  filter(trip_type == 'EXP') %>% 
+  summarize(count = n())
+
+exp1 <- bus_speed %>% 
+  group_by(borough, trip_type) %>% 
+  filter(trip_type == 'EXP') %>% 
+  summarise(avg_time = mean(average_speed))
+```
+
+```{r}
+# how much time (on average) does the average rider spend waiting 
+# 80% of this data is truthful 
+
+# wait time = additional_travel_time
+
+waiting_data <- waiting_data %>% 
+  rename(wait_time = additional_bus_stop_time)
+
+waiting_data <- waiting_data %>% 
+  filter(trip_type == 'EXP'| trip_type == 'LCL/LTD') %>% 
+    group_by(borough, trip_type,period, month) %>% 
+  summarize(mean_wait = mean(wait_time))
+
+
+ggplot(data = waiting_data)+
+  geom_line(aes(x = month, y = mean_wait, colour = borough), alpha = 0.5)+
+  labs(x = 'Date',
+       y = 'Average Wait Time (mins)')+
+  facet_wrap(~borough)
+
+
+# next step?
+# four pie charts (how many people are waiting per borough), wait time
+# averaged by year ; more constructive view of the wait time 
+
+```
