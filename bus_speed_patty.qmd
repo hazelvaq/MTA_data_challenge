@@ -47,5 +47,117 @@ ggplot(data = bus_avg,
   theme_minimal()
 ```
 
+---------------------------------------------------
+
+## What borough are riders usually waiting in
+
+- want to create 4 pie chart graphs:
+  - on peak, express
+  - off peak, express
+  - on peak, local
+  - off peak, local
+  
+```{r}
+#load in data, cust_wait is the customer journey focused dataset
+cust_wait <- read_csv("data/MTA_Bus_Customer_Journey-Focused_Metrics__2017-2019_20241008.csv")
+
+#view the dataset
+View(cust_wait)
+```
+
+```{r}
+#rename additional_bus_stop_time column to wait_time
+waiting_data <- cust_wait %>% 
+  rename(wait_time = additional_bus_stop_time)
+
+#view the dataset
+View(waiting_data)
+
+#filter data for trip type that equals EXP and LCL/LTD (gives me monthly data)
+waiting_data <- waiting_data %>% 
+  filter(trip_type == 'EXP'| trip_type == 'LCL/LTD') %>% 
+    group_by(borough, trip_type, period, month) %>% #filter by these four columns
+  summarize(mean_wait = mean(wait_time)) #find the mean of the wait time column
+```
+
+
+```{r}
+#create pie charts here
+#on peak, express pie chart
+
+#filter the data to only show on peak, express route in dataset
+on_peak_exp <- waiting_data %>% 
+  filter(trip_type == 'EXP' & period == 'Peak') %>% 
+  group_by(borough) %>% 
+  summarise(Amount = n())
+  
+#filter the data to only show off peak, express route in dataset  
+off_peak_exp <- waiting_data %>% 
+  filter(trip_type == 'EXP' & period == 'Off-Peak') %>% 
+  group_by(borough) %>% 
+  summarise(Amount = n())
+  
+#filter the data to only show on peak, local route in dataset  
+on_peak_LCL <- waiting_data %>% 
+  filter(trip_type == 'LCL/LTD' & period == 'Peak') %>% 
+  group_by(borough) %>% 
+  summarise(Amount = n())
+  
+#filter the data to only show off peak, local route in dataset  
+off_peak_LCL <- waiting_data %>% 
+  filter(trip_type == 'LCL/LTD' & period == 'Peak') %>% 
+  group_by(borough) %>% 
+  summarise(Amount = n())
+  
+#view dataset
+View(on_peak_exp)
+
+#create pie chart for on peak, express
+ggplot(data = on_peak_exp, aes(x = "x", y = Amount, fill = borough))+
+  geom_bar(stat="identity", width = 1) +
+  coord_polar(theta = "y")
+```
+
+
+
+--------------------------------------
+## Do riders get to their destination on time?
+- look at overall number from 2017 to 2019
+- look at per year
+- look at per borough
+- difference between peak and off peak?
+(We are still looking at exp and local since that is what the other visualizations are focusing on)
+
+```{r}
+#filter for exp and local trip type
+waiting_data_2 <- cust_wait %>% 
+  filter(trip_type == 'EXP'| trip_type == 'LCL/LTD')
+
+#find the average percentage of how many people make it to their destination within 5 minutes
+on_time <- waiting_data_2 %>% 
+  summarise(mean(customer_journey_time_performance))
+
+
+#find the average percentage per year
+on_time_yearly <- waiting_data_2 %>% 
+  mutate(Year = year(month)) %>% 
+  group_by(Year) %>% 
+  summarise(mean(customer_journey_time_performance))
+
+#look at per borough
+on_time_borough <- waiting_data_2 %>% 
+  group_by(borough) %>% 
+  summarise(mean(customer_journey_time_performance))
+
+#look at on vs off peak
+on_time_peak <- waiting_data_2 %>% 
+  group_by(period) %>% 
+  summarise(mean(customer_journey_time_performance))
+```
+
+
+
+
+
 
 
