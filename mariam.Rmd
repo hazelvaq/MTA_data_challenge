@@ -10,7 +10,7 @@ library(tidyverse)
 
 bus_speed <- read_csv('data/mta_bus_speeds_2020.csv')
 
-waiting_data <- read_csv('data/MTA_Bus_Customer_Journey-Focused_Metrics__2017-2019_20241008.csv')
+waiting_data1 <- read_csv('data/MTA_Bus_Customer_Journey-Focused_Metrics__2017-2019_20241008.csv')
 
 # grouping by five boroughs: Bronx, Brooklyn, Manhattan, Queens, Staten
 bronx <- bus_speed %>% 
@@ -53,17 +53,17 @@ exp1 <- bus_speed %>%
 
 # wait time = additional_travel_time
 
-waiting_data <- waiting_data %>% 
+waiting_data <- waiting_data1 %>% 
   rename(wait_time = additional_bus_stop_time)
 
-waiting_data <- waiting_data %>% 
+waiting_data <- waiting_data1 %>% 
   filter(trip_type == 'EXP'| trip_type == 'LCL/LTD') %>% 
     group_by(borough, trip_type,period, month) %>% 
   summarize(mean_wait = mean(wait_time))
 
 
 ggplot(data = waiting_data)+
-  geom_line(aes(x = month, y = mean_wait, colour = borough), alpha = 0.5)+
+  geom_jitter(aes(x = month, y = mean_wait, colour = borough), alpha = 0.5)+
   labs(x = 'Date',
        y = 'Average Wait Time (mins)')+
   facet_wrap(~borough)
@@ -72,5 +72,116 @@ ggplot(data = waiting_data)+
 # next step?
 # four pie charts (how many people are waiting per borough), wait time
 # averaged by year ; more constructive view of the wait time 
+
+```
+
+```{r}
+waiting_data2 <- waiting_data1 %>% 
+  rename(wait_time = additional_bus_stop_time) %>%
+  filter(trip_type %in% c('EXP', 'LCL/LTD')) %>%
+  group_by(borough, trip_type, period) %>%
+  summarize(mean_wait = mean(wait_time, na.rm = TRUE))
+
+
+custom_colors <-c("Peak" = '#0039A6',
+                  "Off-Peak" = '#A7A9AC')
+
+ggplot(waiting_data2, aes(x = borough, y = mean_wait, fill = period)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  scale_fill_manual(values = custom_colors)+
+  facet_wrap(~period) +
+  labs(x = 'Borough', y = 'Average Wait Time (mins)', 
+       title = 'Average Wait Time by Borough, Trip Type, and Period') +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1),
+        legend.text = element_blank(),
+        legend.title = element_blank())
+```
+
+```{r}
+waiting_data_time <- waiting_data1 %>% 
+  rename(wait_time = additional_bus_stop_time) %>%
+  mutate(
+    month2 = month(month, label = TRUE),  # Extract month as a factor
+    year = year(month)  # Extract year for proper ordering
+  ) %>%
+  group_by(borough, period, month, month2, year) %>%
+  summarize(mean_wait = mean(wait_time, na.rm = TRUE), .groups = "drop")
+
+# Create the plot
+ggplot(waiting_data_time, aes(x = month, y = mean_wait, group = interaction(month2, year), color = period)) +
+  geom_line(orientation = "y") +
+  geom_point() +
+  facet_wrap(~borough, scales = "free_y") +
+  scale_x_date(date_breaks = "3 months", date_labels = "%b %Y") +
+  labs(x = 'Month', y = 'Average Wait Time (mins)', 
+       title = 'Monthly Wait Time Trends by Borough and Period',
+       color = 'Period') +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1),
+        legend.position = "bottom")
+```
+
+```{r}
+library(ggplot2)
+library(dplyr)
+library(lubridate)
+library(patchwork)  # For combining plots
+
+# Prepare the data
+waiting_data_time <- waiting_data1 %>% 
+  rename(wait_time = additional_bus_stop_time) %>%
+  mutate(
+    month2 = month(month, label = TRUE),  # Extract month as a factor
+    year = year(month),  # Extract year for proper ordering
+    period = factor(period, levels = c("Peak", "Off-Peak"))  # Ensure consistent ordering of periods
+  ) %>%
+  group_by(borough, period, month, month2, year) %>%
+  summarize(mean_wait = mean(wait_time, na.rm = TRUE), .groups = "drop")
+
+# Create a function to generate a plot for a specific period
+create_plot <- function(data, period_name) {
+  ggplot(data %>% filter(period == period_name), 
+         aes(x = month, y = mean_wait, color = borough)) +
+    geom_line() +
+    geom_point(size = 1) +
+    scale_x_date(date_breaks = "3 months", date_labels = "%b %Y",
+                 expand = c(0.02,0)) +
+    scale_color_brewer(palette = "Accent") +  # Use a color-blind friendly palette
+    labs(x = 'Month', y = 'Average Wait Time (mins)', 
+         title = paste(period_name, "Period: Seasonal Wait Time Trends by Borough"),
+         color = 'Borough') +
+    theme_minimal() +
+    theme(axis.text.x = element_text(angle = 45, hjust = 1),
+          legend.position = "right",
+          panel.grid.minor = element_blank()) +  # Remove minor grid lines for clarity
+    guides(color = guide_legend(override.aes = list(size = 2)))  # Make legend points larger
+}
+
+# Create the two plots
+peak_plot <- create_plot(waiting_data_time, "Peak")
+offpeak_plot <- create_plot(waiting_data_time, "Off-Peak")
+
+# Combine the plots vertically
+combined_plot <- peak_plot / offpeak_plot +
+  plot_layout(guides = "collect") & # Collect legends
+  theme(legend.position = "right")
+
+# Display the combined plot
+print(peak_plot)
+
+```
+
+```{r}
+print(offpeak_plot)
+
+
+peak_plot/offpeak_plot
+```
+
+```{r}
+waiting_exp_data <- waiting_data_time %>% 
+  filter(trip_type == 'EXP')
+
 
 ```
