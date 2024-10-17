@@ -11,13 +11,24 @@ Overall questions:
 
 
 ```{r}
-#load in libraries
-library(tidyverse)
-library(dplyr)
-library(ggplot2)
-```
+##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+##                                                                            --
+##----------------------------- LOAD IN LIBRARIES-------------------------------
+##                                                                            --
+##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-```{r}
+library(tidyverse) #a bunch of necessary packages in one
+library(dplyr) #helps with piping
+library(ggplot2) #creates graphs
+library(ARTofR) #creates clean heading for code
+
+
+##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+##                                                                            --
+##----------------------------------- DATA--------------------------------------
+##                                                                            --
+##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 #load in data
 bus_speed <- read_csv("data/MTA_Bus_Speeds__2015-2019_20241008.csv")
 
@@ -76,8 +87,8 @@ View(waiting_data)
 #filter data for trip type that equals EXP and LCL/LTD (gives me monthly data)
 waiting_data <- waiting_data %>% 
   filter(trip_type == 'EXP'| trip_type == 'LCL/LTD') %>% 
-    group_by(borough, trip_type, period, month) %>% #filter by these four columns
-  summarize(mean_wait = mean(wait_time)) #find the mean of the wait time column
+    group_by(borough, trip_type, period, month) #%>% #filter by these four columns
+  #summarize(mean_wait = mean(wait_time)) #find the mean of the wait time column
 ```
 
 
@@ -129,30 +140,95 @@ ggplot(data = on_peak_exp, aes(x = "x", y = Amount, fill = borough))+
 (We are still looking at exp and local since that is what the other visualizations are focusing on)
 
 ```{r}
+#.........................filtering data.........................
+
 #filter for exp and local trip type
 waiting_data_2 <- cust_wait %>% 
   filter(trip_type == 'EXP'| trip_type == 'LCL/LTD')
 
+
+#........................Overall on time.........................
+
 #find the average percentage of how many people make it to their destination within 5 minutes
 on_time <- waiting_data_2 %>% 
-  summarise(mean(customer_journey_time_performance))
+  summarise(mean_amount = mean(customer_journey_time_performance))
+print(on_time)
+# if we want to add this information, we can do a progress bar type of deal with one part being people arrived on time and the other part being people do not get to their destination on time
 
+#........................Yearly on time.........................
 
-#find the average percentage per year
+#find the average percentage per year------------------
 on_time_yearly <- waiting_data_2 %>% 
   mutate(Year = year(month)) %>% 
   group_by(Year) %>% 
-  summarise(mean(customer_journey_time_performance))
+  summarise(mean_amount = mean(customer_journey_time_performance))
+
+#create a visualization to accompany this per year------------
+#line plot
+yearly_line <- ggplot(data = on_time_yearly, aes(x = Year, y = mean_amount)) +
+  geom_line() +
+  theme_minimal()
+print(yearly_line)
+
+#bar graph
+yearly_col <- ggplot(data = on_time_yearly, aes(x = Year, y = mean_amount)) +
+  geom_col() +
+  theme_minimal()
+print(yearly_col)
+
+
+#........................Borough on time.........................
 
 #look at per borough
 on_time_borough <- waiting_data_2 %>% 
   group_by(borough) %>% 
-  summarise(mean(customer_journey_time_performance))
+  summarise(mean_amount = mean(customer_journey_time_performance))
+
+#create a visualization to accompany this per borough------------
+#line plot
+# borough_line <- ggplot(data = on_time_borough, aes(x = borough, y = mean_amount)) +
+#   geom_line() +
+#   theme_minimal()
+# print(borough_line)
+
+#bar graph
+borough_col <- ggplot(data = on_time_borough, aes(x = borough, y = mean_amount)) +
+  geom_col() +
+  theme_minimal()
+print(borough_col)
+
+
+#........................Peak vs Off Peak on time.........................
 
 #look at on vs off peak
 on_time_peak <- waiting_data_2 %>% 
   group_by(period) %>% 
-  summarise(mean(customer_journey_time_performance))
+  summarise(mean_amount = mean(customer_journey_time_performance))
+
+#create a visualization to accompany this per borough------------
+on_time_peak_2 <- on_time_peak %>% 
+  arrange(desc(period)) %>%
+  mutate(prop = mean_amount / sum(on_time_peak$mean_amount) *100) %>%
+  mutate(ypos = cumsum(prop)- 0.15*prop )
+
+#pie plot
+ggplot(on_time_peak_2, aes(x="", y= mean_amount, fill=period)) +
+  geom_bar(stat="identity", width=1, color="white") +
+  coord_polar("y", start=0) +
+  geom_text(aes(y = ypos, label = period), color = "white", size=6)
+
+pie(on_time_peak$mean_amount, labels = on_time_peak$period)
+
+# peak_line <- ggplot(data = on_time_peak, aes(x = period, y = mean_amount)) +
+#   geom_line() +
+#   theme_minimal()
+# print(peak_line)
+
+#bar graph
+peak_col <- ggplot(data = on_time_peak, aes(x = period, y = mean_amount)) +
+  geom_col() +
+  theme_minimal()
+print(peak_col)
 ```
 
 
