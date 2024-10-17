@@ -1,7 +1,6 @@
 ```
-title
+title: "MTA Data Challenge - Data Exploration"
 ```
-
 # Load in data sets
 
 ```{r}
@@ -12,7 +11,7 @@ library(dplyr)
 
 bus_speeds <- read.csv("data/MTA_Bus_Speeds__2015-2019_20241008.csv")
 
-customer_complaints <- 
+customer_journey <- 
     read.csv("data/MTA_Bus_Customer_Journey-Focused_Metrics__2017-2019_20241008.csv")
 
 ```
@@ -21,14 +20,224 @@ customer_complaints <-
 # Initial data review
 ```{r}
 # Find the most additional travel time by borough 
-travel_borough <- customer_complaints %>% 
+travel_borough <- customer_journey %>% 
   group_by(borough) %>% 
   summarize(travel_time_sum = mean(additional_travel_time, na.rm = TRUE))
 
 # most by borough and line
-travel_line <- customer_complaints %>% 
+travel_line <- customer_journey %>% 
   group_by(borough, period) %>% 
   summarize(travel_time_sum = mean(additional_travel_time))
+
+```
+
+# Annual bus speeds and then monthly
+
+```{r}
+# remove select bus service
+bus_speeds <- bus_speeds %>% 
+  filter(trip_type != "SBS") %>% 
+  rename(date = month) %>% 
+  mutate(month = month(date),
+         year = year(date))
+  
+
+# Monthly bus average speed
+bus_month <- bus_speeds %>% 
+  group_by(month, year,period, route_id,day_type, trip_type) %>% 
+  summarize(average_speed = mean(average_speed, na.rm = T))
+  
+# Yearlt bus average speed
+
+
+
+# Local buses
+bus_local <- bus_speeds %>% 
+  filter(trip_type %in% "LCL/LTD") %>% 
+  group_by(period, route_id,day_type) %>% 
+  summarize(average_speed = mean(average_speed, na.rm = T))
+
+
+```
+
+## Looking into the relationship of bus speed and bus wait time
+
+Compare them side by side 
+
+
+```{r}
+bus_speeds <- read.csv("data/MTA_Bus_Speeds__2015-2019_20241008.csv")
+
+customer_journey <- 
+    read.csv("data/MTA_Bus_Customer_Journey-Focused_Metrics__2017-2019_20241008.csv")
+```
+
+
+```{r}
+
+# Get monthly average bus speed local - weekends and weekdays 
+bus_speed_month <- bus_speeds %>% 
+  filter(trip_type != "SBS",
+         month >= "2017-07-31",
+         trip_type != "Systemwide"
+         ) %>% 
+  rename(date = month) %>%  
+  # mutate(month = month(date),
+  #        year = year(date)) %>% 
+  group_by(borough, date, trip_type) %>% 
+  summarize(average_speed = mean(average_speed, na.rm =T))
+
+
+# Monthly bus wait time
+bus_wait_month <- customer_journey %>%
+  filter(trip_type != "SBS", trip_type != "Systemwide") %>%
+  rename(date = month) %>%
+  group_by(borough, date, trip_type) %>%
+  summarize(average_wait = mean(additional_bus_stop_time, na.rm = T))
+
+# combine datasets
+speed_time <- left_join(bus_wait_month, bus_speed_month)
+
+# Plot across all borough
+ggplot(data = speed_time, 
+       aes(x = average_wait, y = average_speed)) +
+  geom_point() +
+  labs(x = "Average wait time (min)", y = "Average speed (mph)",
+       title = "Relationship of speed and time across NYC buses") +
+  theme_minimal()
+
+
+
+```
+
+
+```{r}
+# Average speed and average wait time across each individual borough
+
+ggplot(data = speed_time, 
+       aes(x = average_wait, y = average_speed)) +
+  geom_point() +
+  labs(x = "Average wait time (min)", y = "Average speed (mph)",
+       title = "Relationship of speed and time across NYC buses") +
+  theme_minimal() +
+  facet_wrap(~borough)
+
+
+```
+
+```{r}
+# Focusing on express and local
+
+# Plot across all borough
+express <- ggplot(data = speed_time %>% filter(trip_type == "EXP"), 
+       aes(x = average_wait, y = average_speed)) +
+  geom_point(color = "cornflowerblue") +
+  labs(x = "Average wait time (min)", y = "Average speed (mph)",
+       title = "Express buses") +
+  theme_minimal() 
+
+local <- ggplot(data = speed_time %>% filter(trip_type == "LCL/LTD"), 
+       aes(x = average_wait, y = average_speed)) +
+  geom_point(color = "orange") +
+  labs(x = "Average wait time (min)", y = "Average speed (mph)",
+       title = "Local buses") +
+  theme_minimal() 
+
+express/local
+
+```
+```{r}
+# Just express bus with regression
+summary(lm(average_speed~average_wait, data = speed_time))
+
+```
+
+Focusing on express buses lets do across borough
+
+```{r}
+
+# Plot across all borough
+ggplot(data = speed_time %>% filter(trip_type == "EXP"), 
+       aes(x = average_wait, y = average_speed)) +
+  geom_point(color = "cornflowerblue") +
+  labs(x = "Average wait time (min)", y = "Average speed (mph)",
+       title = "Express buses") +
+  theme_minimal() +
+  facet_wrap(~borough)
+
+
+
+```
+
+
+Local buses
+
+```{r}
+# Plot across all borough
+ggplot(data = speed_time %>% filter(trip_type == "LCL/LTD"), 
+       aes(x = average_wait, y = average_speed)) +
+  geom_point(color = "cornflowerblue") +
+  labs(x = "Average wait time (min)", y = "Average speed (mph)",
+       title = "Express buses") +
+  theme_minimal() +
+  facet_wrap(~borough)
+
+```
+
+
+## Time series 
+
+```{r}
+#Get monthly average bus speed local - weekends and weekdays 
+bus_speed_month <- bus_speeds %>% 
+  filter(trip_type != "SBS",
+         month >= "2017-07-31",
+         trip_type != "Systemwide"
+         ) %>% 
+  rename(date = month) %>%  
+  # mutate(month = month(date),
+  #        year = year(date)) %>% 
+  group_by(borough, date, trip_type, period) %>% 
+  summarize(average_speed = mean(average_speed, na.rm =T))
+
+
+# Monthly bus wait time
+bus_wait_month <- customer_journey %>%
+  filter(trip_type != "SBS", trip_type != "Systemwide") %>%
+  rename(date = month) %>%
+  group_by(borough, date, trip_type, period) %>%
+  summarize(average_wait = mean(additional_bus_stop_time, na.rm = T))
+
+# combine datasets
+speed_time <- left_join(bus_wait_month, bus_speed_month)
+
+
+
+ggplot(speed_time, aes(x = period, y = average_wait)) +
+  geom_boxplot() +
+  labs(x = "Bus Service Type", y = "Average Wait Time (min)", title = "Average Wait Time by Bus Service Type") +
+  theme_minimal()
+
+ggplot(speed_time, aes(x = period, y = average_speed)) +
+  geom_boxplot() +
+  labs(x = "Bus Service Type", y = "Average Speed (mph)", title = "Average Speed by Bus Service Type") +
+  theme_minimal()
+
+
+
+
+
+```
+
+```{r}
+
+# Create a histogram-like count plot for average wait time
+ggplot(speed_time, aes(x = average_wait, fill = period)) +
+  geom_histogram(position = "identity", bins = 30, alpha = 0.6) +
+  labs(x = "Average Wait Time (min)", y = "Count", title = "Count of Average Wait Time by Bus Service Type") +
+  theme_minimal()
+
+
 
 ```
 
