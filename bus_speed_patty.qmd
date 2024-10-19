@@ -86,9 +86,7 @@ View(waiting_data)
 
 #filter data for trip type that equals EXP and LCL/LTD (gives me monthly data)
 waiting_data <- waiting_data %>% 
-  filter(trip_type == 'EXP'| trip_type == 'LCL/LTD') %>% 
-    group_by(borough, trip_type, period, month) #%>% #filter by these four columns
-  #summarize(mean_wait = mean(wait_time)) #find the mean of the wait time column
+  filter(trip_type == 'EXP'| trip_type == 'LCL/LTD')
 ```
 
 
@@ -97,36 +95,73 @@ waiting_data <- waiting_data %>%
 #on peak, express pie chart
 
 #filter the data to only show on peak, express route in dataset
-on_peak_exp <- waiting_data %>% 
-  filter(trip_type == 'EXP' & period == 'Peak') %>% 
-  group_by(borough) %>% 
-  summarise(Amount = n())
+on_peak_exp <- waiting_data %>%  #piping from waiting data
+  filter(trip_type == 'EXP' & period == 'Peak') %>% #filter for trip types that equal exp and peak
+  unique() %>% #make sure to find the unique of each row (do not double count them)
+  group_by(borough) %>% #group by borough
+  summarise(Amount = n()) %>%  #count the amount of observations per borough
+  mutate(percent = round(Amount/sum(Amount)*100, 1),
+         percent_sym = round(Amount/sum(Amount)*100, 1))
+
+on_peak_exp_2 <- on_peak_exp %>% 
+  arrange(desc(borough)) %>%
+  mutate(prop = percent / sum(on_peak_exp$percent) *100) %>%
+  mutate(ypos = cumsum(prop)- 0.5*prop )
+
+
+#add % symbol to the end of the percent column obervations
+on_peak_exp_2[ ,4] <- paste0(as.matrix(on_peak_exp_2[, 4]), '%')
+
+
   
 #filter the data to only show off peak, express route in dataset  
 off_peak_exp <- waiting_data %>% 
   filter(trip_type == 'EXP' & period == 'Off-Peak') %>% 
+  unique() %>% 
   group_by(borough) %>% 
   summarise(Amount = n())
   
 #filter the data to only show on peak, local route in dataset  
 on_peak_LCL <- waiting_data %>% 
   filter(trip_type == 'LCL/LTD' & period == 'Peak') %>% 
+  unique() %>% 
   group_by(borough) %>% 
   summarise(Amount = n())
   
 #filter the data to only show off peak, local route in dataset  
 off_peak_LCL <- waiting_data %>% 
   filter(trip_type == 'LCL/LTD' & period == 'Peak') %>% 
+  unique() %>% 
   group_by(borough) %>% 
   summarise(Amount = n())
   
 #view dataset
 View(on_peak_exp)
 
-#create pie chart for on peak, express
-ggplot(data = on_peak_exp, aes(x = "x", y = Amount, fill = borough))+
+#create pie chart for express on peak
+ggplot(data = on_peak_exp_2, aes(x = "", y = percent, fill = borough))+
+  geom_col(stat="identity", width = 1, col = "white") +
+  coord_polar(theta = "y") +
+  theme_void() +
+  labs(title = "Bus line amount per Borough for On Peak, Express") +
+  geom_text(aes(y = ypos, label = percent_sym))
+
+#create pie chart for express off peak
+ggplot(data = off_peak_exp, aes(x = "x", y = Amount, fill = borough))+
   geom_bar(stat="identity", width = 1) +
   coord_polar(theta = "y")
+
+#create pie chart for local on peak
+ggplot(data = on_peak_LCL, aes(x = "x", y = Amount, fill = borough))+
+  geom_bar(stat="identity", width = 1) +
+  coord_polar(theta = "y")
+
+#create pie chart for 
+ggplot(data = off_peak_LCL, aes(x = "x", y = Amount, fill = borough))+
+  geom_bar(stat="identity", width = 1) +
+  coord_polar(theta = "y")
+  
+  
 ```
 
 
@@ -230,6 +265,11 @@ peak_col <- ggplot(data = on_time_peak, aes(x = period, y = mean_amount)) +
   theme_minimal()
 print(peak_col)
 ```
+
+
+
+
+
 
 
 
