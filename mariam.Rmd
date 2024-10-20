@@ -80,8 +80,14 @@ waiting_data2 <- waiting_data1 %>%
   rename(wait_time = additional_bus_stop_time) %>%
   filter(trip_type %in% c('EXP', 'LCL/LTD')) %>%
   group_by(borough, trip_type, period) %>%
-  summarize(mean_wait = mean(wait_time, na.rm = TRUE))
+  summarize(mean_wait = sum(wait_time, na.rm = TRUE)) %>% 
+  mutate(hours_wait = mean_wait/60) 
 
+waiting_data3 <- waiting_data1 %>% 
+  rename(wait_time = additional_bus_stop_time) %>%
+  filter(trip_type %in% c('EXP', 'LCL/LTD')) %>%
+  group_by(borough, trip_type, period) %>%
+  summarize(mean_wait = mean(wait_time, na.rm = TRUE)) 
 
 custom_colors <-c("Peak" = '#0039A6',
                   "Off-Peak" = '#A7A9AC')
@@ -175,13 +181,93 @@ print(peak_plot)
 ```{r}
 print(offpeak_plot)
 
-
-peak_plot/offpeak_plot
 ```
 
 ```{r}
 waiting_exp_data <- waiting_data_time %>% 
   filter(trip_type == 'EXP')
 
+# split it by express and local routes, type of day (weekend/weekday)
 
+```
+
+```{r}
+### ----------- express routes time series 
+# Get monthly average bus speed local - weekends and weekdays 
+monthly_bus_speed <- bus_speed %>% 
+  filter(trip_type != "SBS",
+         month >= "2017-07-31",
+         trip_type != "Systemwide"
+         ) %>% 
+  rename(date = month) %>%  
+  # mutate(month = month(date),
+  #        year = year(date)) %>% 
+  group_by(borough, date, trip_type,day_type) %>% 
+  summarize(average_speed = mean(average_speed, na.rm =T))
+
+
+# Monthly bus wait time
+bus_wait_month <- waiting_data1 %>%
+  filter(trip_type != "SBS", trip_type != "Systemwide") %>%
+  rename(date = month) %>%
+  group_by(borough, date, trip_type) %>%
+  summarize(average_wait = mean(additional_bus_stop_time, na.rm = T))
+
+# combine datasets
+speed_time <- left_join(monthly_bus_speed, bus_wait_month)
+
+
+
+
+#--------------- weekend graphs
+speed_time_wkday <- speed_time %>% 
+  filter(day_type == 1) %>% 
+  mutate(date = lubridate::as_date(date))
+
+ggplot(speed_time_wkday, 
+         aes(x = date, y = average_wait, color = borough)) +
+  facet_wrap(~trip_type, ncol = 1)+
+    geom_line() +
+    geom_point(size = 1) +
+    scale_x_date(date_breaks = "3 months", date_labels = "%b %Y") +
+    scale_color_brewer(palette = "BrBG") +  # Use a color-blind friendly palette
+    labs(x = 'Month', y = 'Average Wait Time (mins)', 
+         title = "Weekday Wait Time Trends by Borough and Route",
+         color = 'Borough') +
+    theme_minimal() +
+    theme(axis.text.x = element_text(angle = 45, hjust = 1),
+          legend.position = "right",
+          panel.grid.minor = element_blank())
+```
+
+```{r echo=FALSE}
+speed_time_wknd <- speed_time %>% 
+  filter(day_type == 2) %>% 
+  mutate(date = lubridate::as_date(date))
+
+
+ggplot(speed_time_wknd, 
+         aes(x = date, y = average_wait, color = borough)) +
+  facet_wrap(~trip_type, ncol = 1)+
+    geom_line() +
+    geom_point(size = 1) +
+    scale_x_date(date_breaks = "3 months", date_labels = "%b %Y") +
+    scale_color_brewer(palette = "Accent") +  # Use a color-blind friendly palette
+    labs(x = 'Month', y = 'Average Wait Time (mins)', 
+         title = "Weekend Wait Time Trends by Borough and Route",
+         color = 'Borough') +
+    theme_minimal() +
+    theme(axis.text.x = element_text(angle = 45, hjust = 1),
+          legend.position = "right",
+          panel.grid.minor = element_blank())
+```
+
+```{r}
+exp_time <- speed_time %>% 
+  filter(trip_type == 'EXP') %>% 
+  mutate(date = lubridate::as_date(date))
+
+lcl_time <- speed_time %>% 
+  filter(trip_type == 'LCL/LTD') %>% 
+  mutate(date = lubridate::as_date(date))
 ```
