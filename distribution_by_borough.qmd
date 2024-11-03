@@ -1,0 +1,134 @@
+---
+title: "Distribution by Borough"
+author: "Patricia Park:
+format: html
+---
+
+```{r}
+##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+##                                                                            --
+##----------------------------- LOAD IN LIBRARIES-------------------------------
+##                                                                            --
+##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+library(tidyverse) #a bunch of necessary packages in one
+library(dplyr) #helps with piping
+library(ggplot2) #creates graphs
+library(ARTofR) #creates clean heading for code
+library(extrafont)
+library(showtext)
+
+
+#..........................import text...........................
+font_add_google("Libre Baskerville", family = "Libre")
+
+
+##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+##                                                                            --
+##----------------------------------- DATA--------------------------------------
+##                                                                            --
+##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+#load in data, cust_wait is the customer journey focused dataset
+cust_wait <- read_csv("data/MTA_Bus_Customer_Journey-Focused_Metrics__2017-2019_20241008.csv")
+
+#rename additional_bus_stop_time column to wait_time
+waiting_data <- cust_wait %>% 
+  rename(wait_time = additional_bus_stop_time)
+
+#filter data for trip type that equals EXP and LCL/LTD; two types we are interested in (gives monthly data)
+waiting_data <- waiting_data %>% 
+  filter(trip_type == 'EXP'| trip_type == 'LCL/LTD')
+
+
+##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+##                                                                            --
+##--------------------Distribution by bus line----------------------------------
+##                                                                            --
+##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+#set the color scheme
+colors <- c("Staten Island" = "#afc2a9",
+            "Queens" = "#92e1fb",
+            "Manhattan" = "#ff4500",
+            "Brooklyn" = "#4169e1",
+            "Bronx" = "#eda862"
+            )
+
+
+#find how many bus routes per borough
+bus_route_borough <- waiting_data %>%  #piping from waiting data
+ # filter(trip_type == 'EXP' & period == 'Peak') %>% #filter for trip types that equal exp and peak
+  unique() %>% #make sure to find the unique of each row (do not double count them)
+  group_by(borough) %>% #group by borough
+  summarise(Amount = n()) %>%  #count the amount of observations per borough
+  mutate(percent = round(Amount/sum(Amount)*100, 1),
+         percent_sym = round(Amount/sum(Amount)*100, 1))
+
+#put positions for the percentage numbers to go onto
+bus_route_borough <- bus_route_borough %>% 
+  arrange(desc(borough)) %>%
+  mutate(prop = percent / sum(bus_route_borough$percent) *100) %>%
+  mutate(ypos = cumsum(prop)- 0.5*prop )
+
+
+#add % symbol to the end of the percent column obervations
+bus_route_borough[ ,4] <- paste0(as.matrix(bus_route_borough[, 4]), '%')
+
+#create the pie chart graph
+borough <- ggplot(data = bus_route_borough, aes(x = "", y = percent, fill = borough))+
+  geom_col(stat="identity", width = 1, col = "black", fill = colors) +
+  coord_polar(theta = "y") +
+  theme_void() +
+  labs("Distribution of Bus Lines by Borough") +
+  geom_text(aes(x = 1.1, y = ypos, label = percent_sym), size = 18, family = "Libre", face = "bold") +
+   geom_label(aes(x = 1.78, y = ypos, label = borough), fill = colors, size = 14, family = "Libre", face = "bold") +
+  theme(
+    text=element_text(size=70, family="Libre", face = "bold")
+  )
+
+#save the chart as a png
+#ggsave(filename = 'borough.png', plot = borough, height = 7.5, width = 6)
+
+
+##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+##                                                                            --
+##----------------------Distribution by people----------------------------------
+##                                                                            --
+##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+#find how many people waiting per borough
+bus_route_person <- waiting_data %>%  #piping from waiting data
+  unique() %>% #make sure to find the unique of each row (do not double count them)
+  group_by(borough) %>% #group by borough
+  summarise(Amount = sum(number_of_customers)) %>%  #count the amount of observations per borough
+  mutate(percent = round(Amount/sum(Amount)*100, 1),
+         percent_sym = round(Amount/sum(Amount)*100, 1))
+
+#find the position of the numbers to appear on the pie chart
+bus_route_person <- bus_route_person %>% 
+  arrange(desc(borough)) %>%
+  mutate(prop = percent / sum(bus_route_person$percent) *100) %>%
+  mutate(ypos = cumsum(prop)- 0.5*prop )
+
+
+#add % symbol to the end of the percent column obervations
+bus_route_person[ ,4] <- paste0(as.matrix(bus_route_person[, 4]), '%')
+
+
+people <- ggplot(data = bus_route_person, aes(x = "", y = percent, fill = borough))+
+  geom_col(stat="identity", width = 1, col = "black", fill = colors) +
+  coord_polar(theta = "y") +
+  theme_void() +
+  labs("Distribution of Bus Lines by Borough") +
+  geom_text(aes(x = 1.1, y = ypos, label = percent_sym), nudge_x = 0.12, size = 18, family = "Libre", face = "bold") +
+   geom_label(aes(x = 1.78, y = ypos, label = borough), fill = colors, size = 14, family = "Libre", face = "bold") +
+  theme(
+    text=element_text(size=50,  family="Libre", face = "bold")
+  )
+
+ggsave(filename = 'people.png', plot = people, height = 9, width = 7)
+```
+
+
+

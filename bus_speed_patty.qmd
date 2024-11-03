@@ -21,7 +21,17 @@ library(tidyverse) #a bunch of necessary packages in one
 library(dplyr) #helps with piping
 library(ggplot2) #creates graphs
 library(ARTofR) #creates clean heading for code
+library(extrafont)
+library(showtext)
 
+#load fonts
+font_import()  # This can take some time
+loadfonts(device = "win")  # Use "pdf" or "postscript" if you're not on Windows
+
+
+sysfonts::font_families_google()
+
+font_add_google("Libre Baskerville", family = "Libre")
 
 ##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 ##                                                                            --
@@ -91,29 +101,100 @@ waiting_data <- waiting_data %>%
 
 
 ```{r}
-#create pie charts here
-#on peak, express pie chart
+colors <- c("Staten Island" = "#afc2a9",
+            "Queens" = "#92e1fb",
+            "Manhattan" = "#ff4500",
+            "Brooklyn" = "#4169e1",
+            "Bronx" = "#eda862"
+            )
 
-#filter the data to only show on peak, express route in dataset
-on_peak_exp <- waiting_data %>%  #piping from waiting data
-  filter(trip_type == 'EXP' & period == 'Peak') %>% #filter for trip types that equal exp and peak
+
+
+#find how many bus routes per borough
+bus_route_borough <- waiting_data %>%  #piping from waiting data
+ # filter(trip_type == 'EXP' & period == 'Peak') %>% #filter for trip types that equal exp and peak
   unique() %>% #make sure to find the unique of each row (do not double count them)
   group_by(borough) %>% #group by borough
   summarise(Amount = n()) %>%  #count the amount of observations per borough
   mutate(percent = round(Amount/sum(Amount)*100, 1),
          percent_sym = round(Amount/sum(Amount)*100, 1))
 
-on_peak_exp_2 <- on_peak_exp %>% 
+bus_route_borough <- bus_route_borough %>% 
   arrange(desc(borough)) %>%
-  mutate(prop = percent / sum(on_peak_exp$percent) *100) %>%
+  mutate(prop = percent / sum(bus_route_borough$percent) *100) %>%
   mutate(ypos = cumsum(prop)- 0.5*prop )
 
 
 #add % symbol to the end of the percent column obervations
-on_peak_exp_2[ ,4] <- paste0(as.matrix(on_peak_exp_2[, 4]), '%')
+bus_route_borough[ ,4] <- paste0(as.matrix(bus_route_borough[, 4]), '%')
 
 
-  
+borough <- ggplot(data = bus_route_borough, aes(x = "", y = percent, fill = borough))+
+  geom_col(stat="identity", width = 1, col = "black", fill = colors) +
+  coord_polar(theta = "y") +
+  theme_void() +
+  # geom_text(aes(x = 1.1, y = ypos, label = percent_sym), size = 18, family = "Libre", face = "bold") +
+   geom_label(aes(x = 1.78, y = ypos, label = borough), fill = colors, size = 14, family = "Libre") +
+  theme(
+    text=element_text(size=70, "bold", family="Libre")
+  )
+
+ggsave(filename = 'borough.png', plot = borough, height = 7.5, width = 6)
+
+#find how many people waiting per borough
+bus_route_person <- waiting_data %>%  #piping from waiting data
+  unique() %>% #make sure to find the unique of each row (do not double count them)
+  group_by(borough) %>% #group by borough
+  summarise(Amount = sum(number_of_customers)) %>%  #count the amount of observations per borough
+  mutate(percent = round(Amount/sum(Amount)*100, 1),
+         percent_sym = round(Amount/sum(Amount)*100, 1))
+
+#find the position of the numbers to appear on the pie chart
+bus_route_person <- bus_route_person %>% 
+  arrange(desc(borough)) %>%
+  mutate(prop = percent / sum(bus_route_person$percent) *100) %>%
+  mutate(ypos = cumsum(prop)- 0.5*prop )
+
+
+#add % symbol to the end of the percent column obervations
+bus_route_person[ ,4] <- paste0(as.matrix(bus_route_person[, 4]), '%')
+
+
+people <- ggplot(data = bus_route_person, aes(x = "", y = percent, fill = borough))+
+  geom_col(stat="identity", width = 1, col = "black", fill = colors) +
+  coord_polar(theta = "y") +
+  theme_void() +
+  # geom_text(aes(x = 1.1, y = ypos, label = percent_sym), nudge_x = 0.12, size = 18, family = "Libre", face = "bold") +
+   geom_label(aes(x = 1.78, y = ypos, label = borough), fill = colors, size = 14, family = "Libre", face = "bold") +
+  theme(
+    text=element_text(size=50, "bold", family="Libre",)
+  )
+
+ggsave(filename = 'people.png', plot = people, height = 9, width = 7)
+
+#borough colors:
+# Manhattan: #80bdf6
+# Brooklyn: #fbf7f4
+# Bronx: #ffbe7d
+# Queens: #92e1fb
+# Staten Island: #d9ead3
+
+
+
+```
+
+
+```{r}
+bus_route_person_total <- cust_wait %>%  #piping from waiting data
+  unique() %>% #make sure to find the unique of each row (do not double count them)
+  summarise(Amount = sum(number_of_customers)) #%>%  #count the amount of observations per borough
+  mutate(percent = round(Amount/sum(Amount)*100, 1),
+         percent_sym = round(Amount/sum(Amount)*100, 1))
+
+sum(waiting_data$number_of_customers)
+
+
+
 #filter the data to only show off peak, express route in dataset  
 off_peak_exp <- waiting_data %>% 
   filter(trip_type == 'EXP' & period == 'Off-Peak') %>% 
@@ -185,7 +266,7 @@ waiting_data_2 <- cust_wait %>%
 #........................Overall on time.........................
 
 #find the average percentage of how many people make it to their destination within 5 minutes
-on_time <- waiting_data_2 %>% 
+on_time <- cust_wait %>% 
   summarise(mean_amount = mean(customer_journey_time_performance))
 print(on_time)
 # if we want to add this information, we can do a progress bar type of deal with one part being people arrived on time and the other part being people do not get to their destination on time
