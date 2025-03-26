@@ -5,7 +5,7 @@ Public transportation is an integral part of a daily routine for many New Yorker
 
 ![](MTA_Data_Contest_Sumbission_PP_MG_HV_part1)
 
-![](MTA_Data_Contest_Sumbission_PP_MG_HV_part2)
+![](MTA_Data_Contest_Sumbission_PP_MG_HV_Part2)
 
 ### Contribution
 This project was worked on by [Mariam Garcia](https://github.com/mariamkg00), [Hazel Vaquero](https://github.com/hazelvaq), and [Patricia Park](https://github.com/p-park6).
